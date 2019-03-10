@@ -1,0 +1,121 @@
+:root {
+    --gap: 2px;
+    --frame-border: 2vmin;
+    --frame-size:   90vmin;
+    --frame-max-size: 320px
+}
+
+html {
+    overflow: hidden;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;
+    background-color: #ddd;
+}
+
+
+div.frame-wrapper {
+    display: grid;
+    grid-template-columns: auto;
+
+    margin: auto;
+    margin-top: calc((100vmin - var(--frame-size)) / 2);
+
+    width: var(--frame-size);
+    height: var(--frame-size);
+
+    max-width: calc(var(--frame-max-size) + (2 * var(--frame-border)));
+    max-height: calc(var(--frame-max-size) + (2 * var(--frame-border)));
+
+    background-color: #222;
+    border-radius: 4px;
+}
+
+div.led-wrapper {
+    margin: auto;
+    width: calc(100% - (2 * var(--frame-border)));
+    height: calc(100% - (2 * var(--frame-border)));
+}
+
+
+@media screen and (min-width: 520px) {
+    .led {
+        box-shadow: inset 0 0 20px 0px !important;
+    }
+}
+
+/*
+@media screen and (orientation: landscape) {
+    div.frame-wrapper {
+        top: 10vh;
+    }
+}
+
+@media screen and (orientation: portrait) {
+    div.frame-wrapper {
+        top: 10vw;
+    }
+}
+*/
+
+div.divoom-grid {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-gap: var(--gap);
+    grid-template-columns: repeat(16,1fr);
+    background-color: #111;
+}
+
+.led {
+    box-shadow: inset 0 0 4vmin 0px;
+}
+
+
+
+.button-wrapper {
+    display: grid;
+    grid-template-columns: repeat( auto-fit, minmax(150px, 1fr) );
+    grid-gap: 10px;
+    margin: auto;
+    margin-top: 15px;
+    max-width: 90vmin;
+}
+
+.button-small {
+    font-size: 85%;
+}
+
+.pure-button > i {
+    margin-right: 5px;
+}
+
+.button-hist,
+.button-clock,
+.button-min,
+.button-max {
+    color: white;
+    border-radius: 4px;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+
+.button-hist {
+    background: teal;
+}
+
+.button-clock {
+    background: steelblue;
+}
+
+.button-min {
+    background: deepSkyBlue;
+}
+
+.button-max {
+    background: lightcoral;
+}

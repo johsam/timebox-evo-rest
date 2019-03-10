@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Divoom</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        
+        <link rel="shortcut icon" href="/evo/assets/images/tornado.png" type="image/png"/>
+
+        <link rel="stylesheet" type="text/css" media="screen" href="/evo/assets/css/fontawesome.min.css" />
+        <link rel="stylesheet" type="text/css" media="screen" href="/evo/assets/css/solid.min.css" />
+
+        <link rel="stylesheet" type="text/css" media="screen" href="/evo/assets/css/pure-min.css" />
+
+        <link rel="stylesheet" type="text/css" media="screen" href="/evo/assets/css/main.css" />
+        
+        <script src="/evo/assets/javascript/jquery.min.js"></script>
+        <script src="/evo/assets/javascript/robust-websocket.js"></script>
+
+
+        <script src="/evo/assets/javascript/main.js"></script>
+    </head>
+    <body>
+
+        <!-- Upload file -->
+        <iframe name="upload_iframe" style="display:none"></iframe>
+        <form id="upload_form" action="/evo/upload" method="POST" enctype="multipart/form-data" target="upload_iframe">
+            <input type="file" name="data" id="file_button" style="display:none">
+        </form>
+        
+        <!-- Main display -->
+        <div class="frame-wrapper">
+            <div class="led-wrapper">
+                <div class="divoom-grid"></div>
+            </div>
+        </div>
+        <div class="button-wrapper">
+            <button data-mode="0" class="button-hist pure-button"><i class="fas fa-thermometer-half"></i>Temp + Hist</button>
+            <button data-mode="1" class="button-clock pure-button"><i class="fas fa-clock"></i>Temp + Clock</button>
+            <button data-mode="2" class="button-min pure-button"><i class="fas fa-snowflake"></i>Min Temp</button>
+            <button data-mode="3" class="button-max pure-button"><i class="fas fa-sun"></i>Max Temp</button>
+            <button data-mode="4" class="button-image pure-button"><i class="fas fa-image"></i>Image</button>
+        </div>
+    </body>
+</html>
