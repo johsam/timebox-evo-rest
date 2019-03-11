@@ -39,7 +39,9 @@ class Divoom():
         self._ioloop.add_timeout(time.time() + delay, fn)
 
     def send(self):
-        WsHandler.broadcast(self._hist_pix.to_json())
+        if WsHandler.count():
+            WsHandler.broadcast(self._hist_pix.to_json())
+
         if options.address:
             colour_array = self._hist_pix.get_pixel_data()
             data = EvoEncoder.image_bytes(colour_array)
@@ -50,6 +52,9 @@ class Divoom():
 
     def add_temp(self, val: float, epoch: int):
         self._hist_pix.add_temp(val, epoch)
+
+    def reset_min_max(self):
+        self._hist_pix.reset_min_max()
 
     def view(self):
         self._hist_pix.view()
@@ -81,6 +86,7 @@ class Application(tornado.web.Application):
             (r'/evo/upload(?:/*)', UploadHandler, {'divoom': self._divoom, 'upload_path': '/tmp/', 'naming_strategy': None}),
             (r'/histogram(?:/*)', HistogramHandler, {'divoom': self._divoom}),
             (r'/evo/histogram(?:/*)', HistogramHandler, {'divoom': self._divoom}),
+            (r'/evo/reset/minmax', ResetHandler, {'divoom': self._divoom}),
             (r'/evo/mode(?:/*)', ModeHandler, {'divoom': self._divoom}),
             (r'/evo/load/(.*)', LoadHandler),
             (r'/evo/assets/(.*)', tornado.web.StaticFileHandler, {'path': os.path.join(os.path.dirname(__file__), 'assets')}),
@@ -123,6 +129,10 @@ class WsHandler(tornado.websocket.WebSocketHandler):
         logging.info("Got message '%r' from %s", message, self.request.remote_ip)
 
     @classmethod
+    def count(cls):
+        return len(cls.clients)
+
+    @classmethod
     def shutdown(cls):
         for waiter in cls.clients:
             try:
@@ -158,12 +168,25 @@ class ModeHandler(tornado.web.RequestHandler):
             self.clear()
             self.set_status(200)
         except Exception as e:      # pylint: disable=broad-except
-            logging.error(str(e))
+            logging.error('Illegal data {} {}'.format(data, str(e)))
             self.clear()
             self.set_status(405)
             self.write(json.dumps({
                 "message": str(e)
             }))
+
+
+class ResetHandler(tornado.web.RequestHandler):
+
+    def initialize(self, divoom):  # pylint: disable=arguments-differ
+        self._divoom = divoom
+
+    def data_received(self, chunk):
+        pass
+
+    def get(self, *args, **kwargs):
+        if str(self.request.path).endswith('/reset/minmax'):
+            self._divoom.reset_min_max()
 
 
 class HistogramHandler(tornado.web.RequestHandler):
@@ -284,7 +307,7 @@ def main():
     define('debug', default=False, help='debug', type=bool)
     define("no_ts", default=False, help="timestamp when logging", type=bool)
     define("address", default='', help="Divoom max address", type=str)
-    # define('log_file_prefix', default='/var/log/audiobooks.log', help='log file prefix')
+    # define('log_file_prefix', default='/var/log/tb-evo-rest.log', help='log file prefix')
 
     tornado.options.parse_command_line()
 

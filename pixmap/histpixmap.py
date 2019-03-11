@@ -79,12 +79,16 @@ class HistPixmap(RawPixmap):
 
             self._divoom.send()
 
+    def reset_min_max(self):
+        self._histogram.reset_min_max()
+        self.draw_mode(self._mode)
+
     def add_temp(self, val: float, epoch: int):
 
         val = float(self._format_temp(val))
         change = self._histogram.add(val, epoch)
 
-        logging.info('New temp {} added, statue={}'.format(val, change))
+        logging.info('New temp {} added, status={}'.format(val, change))
 
         if change == HistChange.min_changed:
             self.draw_mode(ModeType.min)

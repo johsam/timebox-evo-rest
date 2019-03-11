@@ -24,6 +24,10 @@ class Histogram():
     def height(self) -> int:
         return self._amp
 
+    def reset_min_max(self):
+        self._min = self._value.copy()
+        self._max = self._value.copy()
+
     def add(self, val: float, epoch: int) -> HistChange:
         result = HistChange.no_change
 

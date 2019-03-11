@@ -27,4 +27,4 @@ class Timebox:
         # print('Send:', binascii.hexlify(bts))
         self.sock.send(bts)
         ret = self.sock.recv(256)
-        logging.info('Received:' +  str(binascii.hexlify(ret)))
+        logging.info('Received: 0x' + str(binascii.hexlify(ret), 'utf-8'))
