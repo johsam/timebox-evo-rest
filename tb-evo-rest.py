@@ -33,7 +33,8 @@ class Divoom():
 
             plain = EvoEncoder.plain('4500')
             self._timebox.send_raw(plain)
-            self.set_mode(0)
+
+        self.set_mode(0)
 
     def after_delay(self, delay: int, fn: Callable):
         self._ioloop.add_timeout(time.time() + delay, fn)
@@ -126,7 +127,7 @@ class WsHandler(tornado.websocket.WebSocketHandler):
         WsHandler.clients.remove(self)
 
     def on_message(self, message):
-        logging.info("Got message '%r' from %s", message, self.request.remote_ip)
+        logging.info("Got message %r from %s", message, self.request.remote_ip)
 
     @classmethod
     def count(cls):
@@ -168,7 +169,7 @@ class ModeHandler(tornado.web.RequestHandler):
             self.clear()
             self.set_status(200)
         except Exception as e:      # pylint: disable=broad-except
-            logging.error('Illegal data {} {}'.format(data, str(e)))
+            logging.error("Illegal data %s %s", data, str(e))
             self.clear()
             self.set_status(405)
             self.write(json.dumps({

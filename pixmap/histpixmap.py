@@ -40,11 +40,11 @@ class HistPixmap(RawPixmap):
     def set_mode(self, mode: ModeType):
         self._mode = ModeType(mode)
         self.draw_mode(self._mode)
-        logging.info('Mode {} selected'.format(self._mode))
+        logging.info("Mode %s selected", self._mode)
 
-    def draw_mode(self, mode: ModeType):
+    def draw_mode(self, mode: ModeType, alt: bool = False):
         self.clear()
-        logging.info('Draw mode {}'.format(mode))
+        logging.info("Drawing mode %s", mode)
 
         if mode == ModeType.hist:
             current = self._histogram.current()
@@ -54,18 +54,20 @@ class HistPixmap(RawPixmap):
         if mode == ModeType.clock:
             current = self._histogram.current()
             self.draw_temp(current['value'])
-            self.draw_clock(int(current['stamp']))
+            self.draw_clock(int(current['stamp']), alt)
 
         if mode == ModeType.min:
             current = self._histogram.min()
-            self.draw_temp(current['value'])
-            self.draw_min_arrow(current['value'])
+            self.draw_temp(current['value'], alt)
+            if not alt:
+                self.draw_min_arrow(current['value'])
             self.draw_clock(int(current['stamp']))
 
         if mode == ModeType.max:
             current = self._histogram.max()
-            self.draw_temp(current['value'])
-            self.draw_max_arrow(current['value'])
+            self.draw_temp(current['value'], alt)
+            if not alt:
+                self.draw_max_arrow(current['value'])
             self.draw_clock(int(current['stamp']))
 
         if mode == ModeType.image:
@@ -88,36 +90,47 @@ class HistPixmap(RawPixmap):
         val = float(self._format_temp(val))
         change = self._histogram.add(val, epoch)
 
-        logging.info('New temp {} added, status={}'.format(val, change))
+        logging.info("New temp %s added, status=%s", val, change)
 
         if change == HistChange.min_changed:
             self.draw_mode(ModeType.min)
-            self._divoom.after_delay(2, lambda: self.draw_mode(self._mode))
+            self._divoom.after_delay(1, lambda: self.draw_mode(ModeType.min, True))
+            self._divoom.after_delay(2, lambda: self.draw_mode(ModeType.min))
+            self._divoom.after_delay(3, lambda: self.draw_mode(ModeType.min, True))
+            self._divoom.after_delay(4, lambda: self.draw_mode(ModeType.min))
+            self._divoom.after_delay(5, lambda: self.draw_mode(self._mode))
 
         if change == HistChange.max_changed:
             self.draw_mode(ModeType.max)
-            self._divoom.after_delay(2, lambda: self.draw_mode(self._mode))
+            self._divoom.after_delay(1, lambda: self.draw_mode(ModeType.max, True))
+            self._divoom.after_delay(2, lambda: self.draw_mode(ModeType.max))
+            self._divoom.after_delay(3, lambda: self.draw_mode(ModeType.max, True))
+            self._divoom.after_delay(4, lambda: self.draw_mode(ModeType.max))
+            self._divoom.after_delay(5, lambda: self.draw_mode(self._mode))
 
         if change == HistChange.no_change:
             self.draw_mode(self._mode)
 
         if change == HistChange.value_changed:
             self.draw_mode(self._mode)
+            self._divoom.after_delay(1, lambda: self.draw_mode(self._mode, True))
+            self._divoom.after_delay(2, lambda: self.draw_mode(self._mode))
 
-    def draw_clock(self, epoch: int):
-        t = time.localtime(epoch)
+    def draw_clock(self, epoch: int, alt: bool = False):
+        if not alt:
+            t = time.localtime(epoch)
 
-        tens = t.tm_hour / 10
-        ones = t.tm_hour % 10
+            tens = t.tm_hour / 10
+            ones = t.tm_hour % 10
 
-        self.smallCharAt(HistPixmap._toChar(tens), 0, 10, RawPixmap.WHITE)
-        self.smallCharAt(HistPixmap._toChar(ones), 4, 10, RawPixmap.WHITE)
+            self.smallCharAt(HistPixmap._toChar(tens), 0, 10, RawPixmap.WHITE)
+            self.smallCharAt(HistPixmap._toChar(ones), 4, 10, RawPixmap.WHITE)
 
-        tens = t.tm_min / 10
-        ones = t.tm_min % 10
+            tens = t.tm_min / 10
+            ones = t.tm_min % 10
 
-        self.smallCharAt(HistPixmap._toChar(tens), 9, 10, RawPixmap.WHITE)
-        self.smallCharAt(HistPixmap._toChar(ones), 13, 10, RawPixmap.WHITE)
+            self.smallCharAt(HistPixmap._toChar(tens), 9, 10, RawPixmap.WHITE)
+            self.smallCharAt(HistPixmap._toChar(ones), 13, 10, RawPixmap.WHITE)
 
     def draw_histogram(self):
         hh = self._histogram.height()
@@ -147,15 +160,16 @@ class HistPixmap(RawPixmap):
             color = RawPixmap.DEG_PLUS
         return color
 
-    def draw_temp(self, val: float):
+    def draw_temp(self, val: float, alt: bool = False):
         # Pick color
         color = self.temp_color(val)
 
-        # Draw sign
-        if val >= 0.0:
-            self.smallCharAt('+', 0, 2, color)
-        else:
-            self.smallCharAt('-', 0, 2, color)
+        if not alt:
+            # Draw sign
+            if val >= 0.0:
+                self.smallCharAt('+', 0, 2, color)
+            else:
+                self.smallCharAt('-', 0, 2, color)
 
         # Draw the value
         if -10.0 < val < 10.0:  # if val > -10.0 and val < 10.0:
