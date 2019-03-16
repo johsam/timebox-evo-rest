@@ -2,7 +2,7 @@ import time
 import logging
 
 from enum import Enum
-from typing import Any
+from typing import Any, Union
 from pixmap.rawpixmap import RawPixmap, RGBColor
 from pixmap.histogram import Histogram, HistChange
 
@@ -19,6 +19,22 @@ class ModeType(Enum):
     min = 2
     max = 3
     image = 4
+
+    def next(self):
+        cls = self.__class__
+        members = list(cls)
+        index = members.index(self) + 1
+        if index >= len(members):
+            index = 0
+        return members[index]
+
+    def prev(self):
+        cls = self.__class__
+        members = list(cls)
+        index = members.index(self) - 1
+        if index < 0:
+            index = len(members) - 1
+        return members[index]
 
 
 class HistPixmap(RawPixmap):
@@ -37,8 +53,15 @@ class HistPixmap(RawPixmap):
     def _format_temp(cls, val: float) -> str:
         return "{:.1f}".format(round(float(val), 1))
 
-    def set_mode(self, mode: ModeType):
-        self._mode = ModeType(mode)
+    def set_mode(self, mode: Union[ModeType, str]):
+        if isinstance(mode, int):
+            self._mode = ModeType(mode)
+        else:
+            if mode == 'next':
+                self._mode = self._mode.next()
+            if mode == 'prev':
+                self._mode = self._mode.prev()
+
         self.draw_mode(self._mode)
         logging.info("Mode %s selected", self._mode)
 

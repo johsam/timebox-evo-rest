@@ -7,7 +7,7 @@ import signal
 import uuid
 import time
 import atexit
-from typing import Any, Callable
+from typing import Any, Callable, Union
 
 import tornado.web
 import tornado.httpserver
@@ -48,7 +48,7 @@ class Divoom():
             data = EvoEncoder.image_bytes(colour_array)
             self._timebox.send_raw(data)
 
-    def set_mode(self, mode: int):
+    def set_mode(self, mode: Union[int, str]):
         self._hist_pix.set_mode(mode)
 
     def add_temp(self, val: float, epoch: int):

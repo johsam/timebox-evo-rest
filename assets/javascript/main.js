@@ -24,7 +24,6 @@ $(function() {
         };
     };
 
-
     // Prevent context menus....
 
     window.addEventListener('contextmenu', (e) => {
@@ -55,13 +54,35 @@ $(function() {
         }
     });
 
+    $('.divoom-grid').on('swipeleft', (event) => {
+        event.stopPropagation();
+        $.ajax({
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            url: '/evo/mode',
+            data: JSON.stringify({ mode: 'next' })
+        });
+    });
+
+    $('.divoom-grid').on('swiperight', (event) => {
+        event.stopPropagation();
+        $.ajax({
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            url: '/evo/mode',
+            data: JSON.stringify({ mode: 'prev' })
+        });
+    });
+
     // Will trigger when a file is selected
     $('#file_button').on('change', () => {
         $('#upload_form').submit();
     });
 
     // Upload file...
-    $('.divoom-grid').on('click', () => {
+    $('.divoom-grid').on('taphold doubletap', () => {
         $('#file_button').trigger('click');
     });
 
