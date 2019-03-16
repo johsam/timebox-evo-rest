@@ -65,6 +65,8 @@ $(function() {
         });
     });
 
+    $('.divoom-grid').on('dragstart', false);
+
     $('.divoom-grid').on('swiperight', (event) => {
         event.stopPropagation();
         $.ajax({
