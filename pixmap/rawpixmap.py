@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Tuple, List
 
-from PIL import Image, ImageEnhance
+from PIL import Image  # , ImageEnhance
 from pixmap.fonts import smallFont, bigFont
 
 RGBColor = Tuple[int, int, int]
@@ -24,7 +24,6 @@ class RawPixmap():
         self._width = width
         self._height = height
         self._pixels = [(0, 0, 0)] * width * height  # type: List[RGBColor]
-        self._image = Image.new('RGBA', (width, height), color='black')  # type: Image
         self.clear()
 
     def clear(self):
@@ -87,7 +86,7 @@ class RawPixmap():
         self.setPixel(x2, y2, color)
 
     def set_rgb_pixels(self, data: List[RGBColor]):
-        self._pixels = data
+        self._pixels = list(data)
 
     def get_rgb_pixels(self) -> List[RGBColor]:
         return self._pixels
@@ -95,14 +94,14 @@ class RawPixmap():
     def get_pixel_data(self) -> List[int]:
         return [(t[0] << 16) + (t[1] << 8) + t[2] for t in self._pixels]
 
-    def load_image(self, path: str) -> bool:
+    def load_image(self, path: str) -> Image:
         try:
-            self._image = Image.open(path)
-            logging.info('Loaded image size={} type={}'.format(self._image.size, self._image.mode))
-            return True
+            result = Image.open(path)
+            logging.info('Loaded image size={} type={}'.format(result.size, result.mode))
+            return result
         except Exception:
             logging.warning('Failed to load image')
-            return False
+            return Image.new('RGBA', (self._width, self._height), color='black')
 
     @classmethod
     def blend_value(cls, under, over, a):
@@ -112,39 +111,33 @@ class RawPixmap():
     def blend_rgba(cls, under, over):
         return tuple([cls.blend_value(under[i], over[i], over[3]) for i in (0, 1, 2)] + [255])
 
-    def display_image(self):
+    def decode_image(self, image: Image) -> List[RGBColor]:
 
-        try:
-            w = self._width
-            h = self._height
+        w = self._width
+        h = self._height
 
-            image_mode = self._image.mode
-            target = Image.new('RGBA', (w, h), color='black')
+        image_mode = image.mode
+        target = Image.new('RGBA', (w, h), color='black')
 
-            source = self._image.convert('RGBA')
-            # enhancer = ImageEnhance.Brightness(source)
-            # source = enhancer.enhance(1.5)
+        source = image.convert('RGBA')
+        # enhancer = ImageEnhance.Brightness(source)
+        # source = enhancer.enhance(1.5)
 
-            if source.size[0] != w or source.size[1] != h:
-                source.thumbnail((w, h), Image.BICUBIC)
+        if source.size[0] != w or source.size[1] != h:
+            source.thumbnail((w, h), Image.BICUBIC)
 
-            if image_mode == 'RGBA':
-                # Alpha to black
-                for y in range(source.size[1]):
-                    for x in range(source.size[0]):
-                        source.putpixel((x, y), self.blend_rgba((0, 0, 0, 255), source.getpixel((x, y))))
+        if image_mode == 'RGBA':
+            # Alpha to black
+            for y in range(source.size[1]):
+                for x in range(source.size[0]):
+                    source.putpixel((x, y), self.blend_rgba((0, 0, 0, 255), source.getpixel((x, y))))
 
-            offset = ((w - source.size[0]) // 2, (h - source.size[1]) // 2)
-            target.paste(source, offset)
+        offset = ((w - source.size[0]) // 2, (h - source.size[1]) // 2)
+        target.paste(source, offset)
 
-            target = target.convert('RGB')
+        target = target.convert('RGB')
 
-            self.set_rgb_pixels(list(target.getdata()))
-
-            return True
-        except Exception:
-            logging.warning('Failed to display image')
-            return False
+        return list(target.getdata())
 
     def view(self):
         def rgb_fg(r: int, g: int, b: int) -> str:

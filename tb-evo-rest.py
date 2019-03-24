@@ -54,6 +54,12 @@ class Divoom():
     def add_temp(self, val: float, epoch: int):
         self._hist_pix.add_temp(val, epoch)
 
+    def set_sunrise(self, epoch: int):
+        self._hist_pix.set_sunrise(epoch)
+
+    def set_sunset(self, epoch: int):
+        self._hist_pix.set_sunset(epoch)
+
     def reset_min_max(self):
         self._hist_pix.reset_min_max()
 
@@ -86,6 +92,7 @@ class Application(tornado.web.Application):
             (r"/evo/ws/?", WsHandler, {'divoom': self._divoom}),
             (r'/evo/upload(?:/*)', UploadHandler, {'divoom': self._divoom, 'upload_path': '/tmp/', 'naming_strategy': None}),
             (r'/histogram(?:/*)', HistogramHandler, {'divoom': self._divoom}),
+            (r'/evo/sun(?:/*)', SunHandler, {'divoom': self._divoom}),
             (r'/evo/histogram(?:/*)', HistogramHandler, {'divoom': self._divoom}),
             (r'/evo/reset/minmax', ResetHandler, {'divoom': self._divoom}),
             (r'/evo/mode(?:/*)', ModeHandler, {'divoom': self._divoom}),
@@ -188,6 +195,35 @@ class ResetHandler(tornado.web.RequestHandler):
     def get(self, *args, **kwargs):
         if str(self.request.path).endswith('/reset/minmax'):
             self._divoom.reset_min_max()
+
+
+class SunHandler(tornado.web.RequestHandler):
+    def initialize(self, divoom):  # pylint: disable=arguments-differ
+        self._divoom = divoom
+
+    def data_received(self, chunk):
+        pass
+
+    @tornado.gen.coroutine
+    def post(self, *args, **kwargs):
+        try:
+            data = tornado.escape.json_decode(self.request.body)
+            print(data)
+            if 'sunrise' in data:
+                self._divoom.set_sunrise(data['sunrise'])
+
+            if 'sunset' in data:
+                self._divoom.set_sunset(data['sunset'])
+
+            self.clear()
+            self.set_status(200)
+        except Exception as e:      # pylint: disable=broad-except
+            logging.error(str(e))
+            self.clear()
+            self.set_status(405)
+            self.write(json.dumps({
+                "message": str(e)
+            }))
 
 
 class HistogramHandler(tornado.web.RequestHandler):

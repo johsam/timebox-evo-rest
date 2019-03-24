@@ -2,7 +2,7 @@ import time
 import logging
 
 from enum import Enum
-from typing import Any, Union
+from typing import Any, Union, List
 from pixmap.rawpixmap import RawPixmap, RGBColor
 from pixmap.histogram import Histogram, HistChange
 
@@ -19,6 +19,11 @@ class ModeType(Enum):
     min = 2
     max = 3
     image = 4
+    sunrise = 5
+    sunset = 6
+
+    def __int__(self):
+        return self.value
 
     def next(self):
         cls = self.__class__
@@ -41,9 +46,12 @@ class HistPixmap(RawPixmap):
 
     def __init__(self, width: int, height: int, divoom: Any):
         super().__init__(width, height)
+        self._uploaded = [(0, 0, 0)] * width * height  # type: List[RGBColor]
         self._histogram = Histogram(width - 2, 5)
         self._mode = ModeType.hist  # type: ModeType
         self._divoom = divoom
+        self._sunrise_epoch = 0
+        self._sunset_epoch = 0
 
     @classmethod
     def _toChar(cls, val) -> str:
@@ -53,7 +61,15 @@ class HistPixmap(RawPixmap):
     def _format_temp(cls, val: float) -> str:
         return "{:.1f}".format(round(float(val), 1))
 
-    def set_mode(self, mode: Union[ModeType, str]):
+    def set_sunrise(self, epoch: int):
+        self._sunrise_epoch = epoch
+        self.draw_mode(self._mode)
+
+    def set_sunset(self, epoch: int):
+        self._sunset_epoch = epoch
+        self.draw_mode(self._mode)
+
+    def set_mode(self, mode: Union[int, str]):
         if isinstance(mode, int):
             self._mode = ModeType(mode)
         else:
@@ -62,8 +78,8 @@ class HistPixmap(RawPixmap):
             if mode == 'prev':
                 self._mode = self._mode.prev()
 
-        self.draw_mode(self._mode)
         logging.info("Mode %s selected", self._mode)
+        self.draw_mode(self._mode)
 
     def draw_mode(self, mode: ModeType, alt: bool = False):
         self.clear()
@@ -94,15 +110,30 @@ class HistPixmap(RawPixmap):
             self.draw_clock(int(current['stamp']))
 
         if mode == ModeType.image:
-            self.display_image()
+            self.set_rgb_pixels(self._uploaded)
+
+        if mode == ModeType.sunrise:
+            img = super(HistPixmap, self).load_image('backgrounds/sunup.png')
+            pixels = super(HistPixmap, self).decode_image(img)
+
+            self.set_rgb_pixels(pixels)
+            self.draw_clock(self._sunrise_epoch)
+
+        if mode == ModeType.sunset:
+            img = super(HistPixmap, self).load_image('backgrounds/sundown.png')
+            pixels = super(HistPixmap, self).decode_image(img)
+
+            self.set_rgb_pixels(pixels)
+            self.draw_clock(self._sunset_epoch)
 
         self._divoom.send()
 
     def load_image(self, path: str):
-        if super(HistPixmap, self).load_image(path):
-            super(HistPixmap, self).display_image()
+        img = super(HistPixmap, self).load_image(path)
+        pixels = super(HistPixmap, self).decode_image(img)
 
-            self._divoom.send()
+        self._uploaded = list(pixels)
+        self.set_mode(int(ModeType.image))
 
     def reset_min_max(self):
         self._histogram.reset_min_max()
