@@ -54,7 +54,12 @@ class EvoEncoder():
         return b'\x01' + payload + EvoEncoder.crc(payload) + b'\x02'
 
     @staticmethod
-    def plain(hex_data: bytes) -> bytes:
+    def encode_hex(hex_data: bytes) -> bytes:
         payload = binascii.unhexlify(hex_data)
+        payload = EvoEncoder.length(payload) + payload
+        return b'\x01' + payload + EvoEncoder.crc(payload) + b'\x02'
+
+    @staticmethod
+    def encode_bytes(payload: bytes) -> bytes:
         payload = EvoEncoder.length(payload) + payload
         return b'\x01' + payload + EvoEncoder.crc(payload) + b'\x02'

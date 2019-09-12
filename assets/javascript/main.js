@@ -1,14 +1,17 @@
-/* globals $:false, RobustWebSocket:false */
+/* globals RobustWebSocket:false */
 /* eslint no-plusplus: off */
 
+// eslint-disable-next-line prefer-arrow-callback
 $(function() {
     const newGrid = (_selector) => {
         const selector = $(_selector);
+        const _cache = [];
 
         for (let y = 0; y < 16; y++) {
             for (let x = 0; x < 16; x++) {
                 const div = $('<div/>', { id: `${x}_${y}` }).addClass('led');
                 $(selector).append(div);
+                _cache.push($(div));
             }
         }
 
@@ -17,7 +20,7 @@ $(function() {
                 for (let y = 0; y < 16; y++) {
                     for (let x = 0; x < 16; x++) {
                         const [r, g, b] = pixmap[y * 16 + x];
-                        $(`div#${x}_${y}`).css({ 'background-color': `rgb(${r},${g},${b})` });
+                        _cache[y * 16 + x].css({ 'background-color': `rgb(${r},${g},${b})` });
                     }
                 }
             }
@@ -39,20 +42,23 @@ $(function() {
     const url = 'ws' + (location.protocol === 'https:' ? 's' : '') + '://' + $(location).attr('host') + '/evo/ws';
     const ws = new RobustWebSocket(url);
 
-    ws.addEventListener('open', function(/*event*/) {
+    ws.addEventListener('open', (/*event*/) => {
         ws.send('Browser connected!');
     });
 
+    // eslint-disable-next-line prefer-arrow-callback
     ws.addEventListener('close', function(/*event*/) {
         ws.send('Browser bye!');
     });
 
-    ws.addEventListener('message', function(event) {
+    ws.addEventListener('message', (event) => {
         const data = JSON.parse(event.data);
         if (data.type === 'pixmap') {
             grid.draw(data.pixmap);
         }
     });
+
+    $('.divoom-grid').on('dragstart', false);
 
     $('.divoom-grid').on('swipeleft', (event) => {
         event.stopPropagation();
@@ -64,8 +70,6 @@ $(function() {
             data: JSON.stringify({ mode: 'next' })
         });
     });
-
-    $('.divoom-grid').on('dragstart', false);
 
     $('.divoom-grid').on('swiperight', (event) => {
         event.stopPropagation();

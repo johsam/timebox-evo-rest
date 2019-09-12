@@ -7,6 +7,7 @@ import signal
 import uuid
 import time
 import atexit
+import datetime
 from typing import Any, Callable, Union
 
 import tornado.web
@@ -30,14 +31,32 @@ class Divoom():
 
         if options.address:
             self._timebox.connect()
+            time.sleep(3)
+            self.set_time()
 
-            plain = EvoEncoder.plain('4500')
+            plain = EvoEncoder.encode_hex('450001020100000000FF00')
+            #plain = EvoEncoder.encode_hex('450100FF00300000000000')
+            #plain = EvoEncoder.encode_hex('4502')
+            #plain = EvoEncoder.encode_hex('5F0A06')
+            
             self._timebox.send_raw(plain)
+            #self._timebox.send(plain)
+            time.sleep(3)
+
+            plain = EvoEncoder.encode_hex('0801')
+            self._timebox.send_raw(plain)
+
 
         self.set_mode(0)
 
     def after_delay(self, delay: int, fn: Callable):
         self._ioloop.add_timeout(time.time() + delay, fn)
+
+    def set_time(self):
+        dt = datetime.datetime.now()
+        cmd = [0x18, dt.year % 100, int(dt.year / 100), dt.month, dt.day, dt.hour, dt.minute, dt.second]
+        plain = EvoEncoder.encode_bytes(bytes(cmd))
+        self._timebox.send_raw(plain)
 
     def send(self):
         if WsHandler.count():
