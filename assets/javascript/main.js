@@ -23,6 +23,13 @@ $(function() {
                         _cache[y * 16 + x].css({ 'background-color': `rgb(${r},${g},${b})` });
                     }
                 }
+            },
+            delta: (delta) => {
+                //console.log('Delta pixels = ',delta.length)
+                for (let i = 0; i < delta.length; i++) {
+                    const [x, y, [r, g, b]] = delta[i];
+                    _cache[y * 16 + x].css({ 'background-color': `rgb(${r},${g},${b})` });
+                }
             }
         };
     };
@@ -54,7 +61,12 @@ $(function() {
     ws.addEventListener('message', (event) => {
         const data = JSON.parse(event.data);
         if (data.type === 'pixmap') {
+            //console.log('Got pixmap bytes =', event.data.length);
             grid.draw(data.pixmap);
+        }
+        if (data.type === 'delta') {
+            //console.log('Got delta bytes =', event.data.length);
+            grid.delta(data.delta);
         }
     });
 

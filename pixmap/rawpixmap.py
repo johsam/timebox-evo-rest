@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import Tuple, List
 
@@ -97,9 +96,9 @@ class RawPixmap():
     def load_image(self, path: str) -> Image:
         try:
             result = Image.open(path)
-            logging.info('Loaded image size={} type={}'.format(result.size, result.mode))
+            logging.info("Loaded image size=%s type=%s", result.size, result.mode)
             return result
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             logging.warning('Failed to load image')
             return Image.new('RGBA', (self._width, self._height), color='black')
 
@@ -155,11 +154,20 @@ class RawPixmap():
                     res.append(rgb_fg(r, g, b) + u'\u25A0')
             print(''.join(res))
 
-    def to_json(self) -> str:
-        result = {'type': 'pixmap', 'width': self._width, 'height': self._height, 'pixmap': []}
+    def pixel_list(self) -> List[RGBColor]:
+        result = []
         for y in range(self._height):
             for x in range(self._width):
-                (r, g, b) = self.getPixel(x, y)
-                result['pixmap'].append((r, g, b))
+                result.append(self.getPixel(x, y))
+        return result
 
-        return json.dumps(result)
+    # def to_json(self) -> str:
+    #     pixmap = []
+    #     for y in range(self._height):
+    #         for x in range(self._width):
+    #             (r, g, b) = self.getPixel(x, y)
+    #             pixmap.append((r, g, b))
+
+    #     result = {'type': 'pixmap', 'width': self._width, 'height': self._height, 'pixmap': pixmap}
+
+    #     return json.dumps(result)

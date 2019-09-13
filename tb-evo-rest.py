@@ -3,12 +3,16 @@
 import os
 import json
 import logging
+import logging.config
+
 import signal
 import uuid
 import time
 import atexit
 import datetime
-from typing import Any, Callable, Union
+from typing import Any, Callable, Union, List
+
+from apscheduler.schedulers.tornado import TornadoScheduler
 
 import tornado.web
 import tornado.httpserver
@@ -18,7 +22,8 @@ from tornado.ioloop import IOLoop
 from tornado.log import LogFormatter
 import tornado.websocket
 
-from pixmap.histpixmap import HistPixmap
+from pixmap.histpixmap import HistPixmap, RGBColor
+
 from evo.timebox import Timebox
 from evo.encoder import EvoEncoder
 
@@ -32,35 +37,33 @@ class Divoom():
         if options.address:
             self._timebox.connect()
             time.sleep(3)
-            self.set_time()
+            self.set_time(0)
 
             plain = EvoEncoder.encode_hex('450001020100000000FF00')
             #plain = EvoEncoder.encode_hex('450100FF00300000000000')
             #plain = EvoEncoder.encode_hex('4502')
             #plain = EvoEncoder.encode_hex('5F0A06')
-            
+
             self._timebox.send_raw(plain)
-            #self._timebox.send(plain)
             time.sleep(3)
 
             plain = EvoEncoder.encode_hex('0801')
             self._timebox.send_raw(plain)
-
 
         self.set_mode(0)
 
     def after_delay(self, delay: int, fn: Callable):
         self._ioloop.add_timeout(time.time() + delay, fn)
 
-    def set_time(self):
+    def set_time(self, offset=0):
         dt = datetime.datetime.now()
-        cmd = [0x18, dt.year % 100, int(dt.year / 100), dt.month, dt.day, dt.hour, dt.minute, dt.second]
+        cmd = [0x18, dt.year % 100, int(dt.year / 100), dt.month, dt.day, dt.hour, dt.minute + offset, dt.second]
         plain = EvoEncoder.encode_bytes(bytes(cmd))
         self._timebox.send_raw(plain)
 
     def send(self):
         if WsHandler.count():
-            WsHandler.broadcast(self._hist_pix.to_json())
+            WsHandler.delta(self._hist_pix.pixel_list())
 
         if options.address:
             colour_array = self._hist_pix.get_pixel_data()
@@ -88,12 +91,28 @@ class Divoom():
     def load_image(self, path: str) -> bool:
         return self._hist_pix.load_image(path)
 
-    def to_json(self) -> str:
-        return self._hist_pix.to_json()
+    def pixel_list(self) -> List[RGBColor]:
+        return self._hist_pix.pixel_list()
+
+    def pixel_list_to_pixmap_json(self, pl: List[RGBColor]) -> str:
+        result = {'type': 'pixmap', 'width': self._hist_pix.width(), 'height': self._hist_pix.height(), 'pixmap': pl}
+        return json.dumps(result)
+
+    @classmethod
+    def delta_to_json(cls, old: List[RGBColor], current: List[RGBColor]) -> str:
+        result = []
+        for y in range(16):
+            for x in range(16):
+                if old[y * 16 + x] != current[y * 16 + x]:
+                    result.append((x, y, current[y * 16 + x]))
+        return json.dumps({'type': 'delta', 'delta': result})
 
     def shutdown(self):
         logging.info('Divoom shutdown...')
         if options.address:
+            self.set_time(0)
+            plain = EvoEncoder.encode_hex('450001020100000000FF00')
+            self._timebox.send_raw(plain)
             self._timebox.disconnect()
 
 
@@ -122,6 +141,9 @@ class Application(tornado.web.Application):
 
         tornado.web.Application.__init__(self, handlers, **settings)
 
+    def divoom(self):
+        return self._divoom
+
     def shutdown(self):
         self._divoom.shutdown()
 
@@ -132,6 +154,7 @@ class WsHandler(tornado.websocket.WebSocketHandler):
 
     def initialize(self, divoom):  # pylint: disable=arguments-differ
         self._divoom = divoom
+        self._pixels = []
 
     def data_received(self, chunk):
         pass
@@ -144,9 +167,12 @@ class WsHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):  # pylint: disable=arguments-differ
         logging.info("Client connected from %s", self.request.remote_ip)
+
         self.set_nodelay(True)
         WsHandler.clients.add(self)
-        self.broadcast(self._divoom.to_json())
+
+        self._pixels = self._divoom.pixel_list()  # pylint: disable=attribute-defined-outside-init
+        self.write_message(self._divoom.pixel_list_to_pixmap_json(self._pixels))
 
     def on_close(self):
         logging.info("Client closed connection from %s", self.request.remote_ip)
@@ -169,12 +195,12 @@ class WsHandler(tornado.websocket.WebSocketHandler):
                 pass
 
     @classmethod
-    def broadcast(cls, msg):
-        # logging.info("Sending message %s to %d client(s)", msg, len(self.clients))
-
+    def delta(cls, pl: List[RGBColor]):
         for waiter in cls.clients:
             try:
-                waiter.write_message(msg)
+                delta = waiter._divoom.delta_to_json(waiter._pixels, pl)  # pylint: disable=protected-access
+                waiter.write_message(delta)
+                waiter._pixels = pl  # pylint: disable=protected-access
             except Exception:  # pylint: disable=broad-except
                 logging.error("Error sending message", exc_info=True)
 
@@ -344,11 +370,41 @@ class IndexHandler(tornado.web.RequestHandler):
 
 
 #
+#   Tornado background job
+#
+
+def forecast_ticker(divoom):
+    dt = datetime.datetime.now()
+    logging.info("Tick, Minute = %d", dt.minute)
+    if dt.minute == 55:
+        logging.info("Retarding clock by 10 min...")
+        divoom.set_time(-10)
+    if dt.minute == 5:
+        logging.info("Reset clock offset...")
+        divoom.set_time(0)
+
+
+@tornado.gen.coroutine
+def five_min_ticker(divoom):
+    forecast_ticker(divoom)
+
+
+@tornado.gen.coroutine
+def fifteen_min_ticker():
+    logging.info("Fifteen min ticker...")
+
+
+#
 # Handle signals
 #
 
 
-def shutdownHandler(app):
+def shutdownHandler(app, job_sched):
+
+    if job_sched.running:
+        logging.info("Shutting down scheduler")
+        job_sched.shutdown()
+
     logging.warning('Shutting down...')
     WsHandler.shutdown()
     app.shutdown()
@@ -383,10 +439,20 @@ def main():
     http_server = tornado.httpserver.HTTPServer(application, xheaders=True)
     http_server.listen(options.port, address=options.listen)
 
+    # Schedule job for forecast
+    scheduler = TornadoScheduler()
+    # logging.getLogger('apscheduler.base').setLevel(logging.WARNING)
+    # logging.getLogger('apscheduler').setLevel(logging.WARNING)
+
+    scheduler.start()
+    scheduler.add_job(lambda: five_min_ticker(application.divoom()), trigger='interval', start_date="2018-01-01", seconds=5 * 60)
+    scheduler.add_job(fifteen_min_ticker, trigger='interval', start_date="2018-01-01", seconds=15 * 60)
+    logging.getLogger('apscheduler.executors.default').setLevel(logging.WARNING)
+
     # Setup signal handlers
     signal.signal(signal.SIGINT, lambda sig, frame: ioloop.add_callback_from_signal(exit))
     signal.signal(signal.SIGTERM, lambda sig, frame: ioloop.add_callback_from_signal(exit))
-    atexit.register(lambda: shutdownHandler(application))
+    atexit.register(lambda: shutdownHandler(application, scheduler))
 
     # Fire up our server
 

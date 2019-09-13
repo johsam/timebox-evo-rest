@@ -53,6 +53,9 @@ class HistPixmap(RawPixmap):
         self._sunrise_epoch = 0
         self._sunset_epoch = 0
 
+        self._width = width
+        self._height = height
+
     @classmethod
     def _toChar(cls, val) -> str:
         return chr(int(val) + ord('0'))
@@ -60,6 +63,12 @@ class HistPixmap(RawPixmap):
     @classmethod
     def _format_temp(cls, val: float) -> str:
         return "{:.1f}".format(round(float(val), 1))
+
+    def width(self) -> int:
+        return self._width
+
+    def height(self) -> int:
+        return self._height
 
     def set_sunrise(self, epoch: int):
         self._sunrise_epoch = epoch

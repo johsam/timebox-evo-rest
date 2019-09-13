@@ -17,7 +17,7 @@ class Histogram():
 
         self._size = size
         self._amp = amplitude
-        self._value = {'value': 0, 'stamp': now}  # type: Dict[str, Union[float, int]]
+        self._value = {'value': 0.0, 'stamp': now}  # type: Dict[str, Union[float, int]]
         self._min = {'value': 100.0, 'stamp': now}  # type: Dict[str, Union[float, int]]
         self._max = {'value': -100.0, 'stamp': now}  # type: Dict[str, Union[float, int]]
         self._points = []  # type: List[float]
