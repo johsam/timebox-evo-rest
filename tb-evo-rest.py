@@ -56,10 +56,13 @@ class Divoom():
         self._ioloop.add_timeout(time.time() + delay, fn)
 
     def set_time(self, offset=0):
-        dt = datetime.datetime.now()
-        cmd = [0x18, dt.year % 100, int(dt.year / 100), dt.month, dt.day, dt.hour, dt.minute + offset, dt.second]
-        plain = EvoEncoder.encode_bytes(bytes(cmd))
-        self._timebox.send_raw(plain)
+        if options.address:
+            dt = datetime.datetime.now()
+            if offset != 0:
+                dt += datetime.timedelta(minutes = offset)
+            cmd = [0x18, dt.year % 100, int(dt.year / 100), dt.month, dt.day, dt.hour, dt.minute, dt.second]
+            plain = EvoEncoder.encode_bytes(bytes(cmd))
+            self._timebox.send_raw(plain)
 
     def send(self):
         if WsHandler.count():
@@ -198,9 +201,11 @@ class WsHandler(tornado.websocket.WebSocketHandler):
     def delta(cls, pl: List[RGBColor]):
         for waiter in cls.clients:
             try:
-                delta = waiter._divoom.delta_to_json(waiter._pixels, pl)  # pylint: disable=protected-access
+                _pixels = waiter.__getattribute__('_pixels')
+                _divoom = waiter.__getattribute__('_divoom')
+                delta = _divoom.delta_to_json(_pixels, pl)
                 waiter.write_message(delta)
-                waiter._pixels = pl  # pylint: disable=protected-access
+                waiter.__setattr__('_pixels', pl)
             except Exception:  # pylint: disable=broad-except
                 logging.error("Error sending message", exc_info=True)
 
@@ -376,12 +381,13 @@ class IndexHandler(tornado.web.RequestHandler):
 def forecast_ticker(divoom):
     dt = datetime.datetime.now()
     logging.info("Tick, Minute = %d", dt.minute)
-    if dt.minute == 55:
-        logging.info("Retarding clock by 10 min...")
-        divoom.set_time(-10)
-    if dt.minute == 5:
-        logging.info("Reset clock offset...")
-        divoom.set_time(0)
+    if options.address:
+        if dt.minute == 55:
+            logging.info("Retarding clock by 10 min...")
+            divoom.set_time(-10)
+        if dt.minute == 5:
+            logging.info("Reset clock offset...")
+            divoom.set_time(0)
 
 
 @tornado.gen.coroutine
@@ -462,3 +468,6 @@ def main():
 if __name__ == '__main__':
     ioloop = IOLoop.instance()
     main()
+
+
+#cat ha.json | jq -r '[.[]|select(.entity_id=="sensor.yr_symbol"),select(.entity_id=="sensor.yr_temperature")| .state]'

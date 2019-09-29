@@ -10,8 +10,11 @@ $(function() {
         for (let y = 0; y < 16; y++) {
             for (let x = 0; x < 16; x++) {
                 const div = $('<div/>', { id: `${x}_${y}` }).addClass('led');
+                const inner = $('<div/>', { class: 'led-inner' });
+                div.append(inner);
+
                 $(selector).append(div);
-                _cache.push($(div));
+                _cache.push($(inner));
             }
         }
 
@@ -20,7 +23,10 @@ $(function() {
                 for (let y = 0; y < 16; y++) {
                     for (let x = 0; x < 16; x++) {
                         const [r, g, b] = pixmap[y * 16 + x];
-                        _cache[y * 16 + x].css({ 'background-color': `rgb(${r},${g},${b})` });
+                        //_cache[y * 16 + x].css({ 'background-color': `rgb(${r},${g},${b})` });
+                        _cache[y * 16 + x].css({
+                            background: `-webkit-radial-gradient(rgba(${r},${g},${b},1) 0%, rgba(255,255,255,0) 100%)`
+                        });
                     }
                 }
             },
@@ -28,7 +34,12 @@ $(function() {
                 //console.log('Delta pixels = ',delta.length)
                 for (let i = 0; i < delta.length; i++) {
                     const [x, y, [r, g, b]] = delta[i];
-                    _cache[y * 16 + x].css({ 'background-color': `rgb(${r},${g},${b})` });
+                    //_cache[y * 16 + x].css({ 'background-color': `rgb(${r},${g},${b})` });
+
+                    _cache[y * 16 + x].css({
+                        background: `-webkit-radial-gradient(rgba(${r},${g},${b},1) 0%, rgba(255,255,255,0) 100%)`
+                    });
+
                 }
             }
         };
@@ -100,11 +111,13 @@ $(function() {
     });
 
     // Upload file...
-    $('.divoom-grid').on('taphold doubletap', () => {
+    $('.divoom-grid').on('taphold doubletap', (event) => {
+        event.stopPropagation();
         $('#file_button').trigger('click');
     });
 
     $('.pure-button').on('click', (event) => {
+        event.stopPropagation();
         const mode = $(event.target).data('mode');
 
         $.ajax({
