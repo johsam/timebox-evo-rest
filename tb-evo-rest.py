@@ -20,6 +20,7 @@ import tornado.httpserver
 from tornado.options import define, options
 from tornado.ioloop import IOLoop
 from tornado.log import LogFormatter
+
 import tornado.websocket
 
 from pixmap.histpixmap import HistPixmap, RGBColor
@@ -59,7 +60,7 @@ class Divoom():
         if options.address:
             dt = datetime.datetime.now()
             if offset != 0:
-                dt += datetime.timedelta(minutes = offset)
+                dt += datetime.timedelta(minutes=offset)
             cmd = [0x18, dt.year % 100, int(dt.year / 100), dt.month, dt.day, dt.hour, dt.minute, dt.second]
             plain = EvoEncoder.encode_bytes(bytes(cmd))
             self._timebox.send_raw(plain)
@@ -84,6 +85,9 @@ class Divoom():
 
     def set_sunset(self, epoch: int):
         self._hist_pix.set_sunset(epoch)
+
+    def set_forecast(self, forecast: dict):
+        self._hist_pix.set_forecast(forecast)
 
     def reset_min_max(self):
         self._hist_pix.reset_min_max()
@@ -138,6 +142,8 @@ class Application(tornado.web.Application):
             (r'/evo/reset/minmax', ResetHandler, {'divoom': self._divoom}),
             (r'/evo/mode(?:/*)', ModeHandler, {'divoom': self._divoom}),
             (r'/evo/load/(.*)', LoadHandler),
+            (r'/evo/forecast', ForecastHandler, {'divoom': self._divoom}),
+            (r'/evo/hex/(.*)', HexHandler, {'divoom': self._divoom}),
             (r'/evo/assets/(.*)', tornado.web.StaticFileHandler, {'path': os.path.join(os.path.dirname(__file__), 'assets')}),
             (r'/(?:[^/]*)/?', IndexHandler),
         ]
@@ -245,6 +251,47 @@ class ResetHandler(tornado.web.RequestHandler):
     def get(self, *args, **kwargs):
         if str(self.request.path).endswith('/reset/minmax'):
             self._divoom.reset_min_max()
+
+
+class ForecastHandler(tornado.web.RequestHandler):
+    def initialize(self, divoom):  # pylint: disable=arguments-differ
+        self._divoom = divoom
+
+    def data_received(self, chunk):
+        pass
+
+    @tornado.gen.coroutine
+    def post(self, *args, **kwargs):
+        try:
+            data = tornado.escape.json_decode(self.request.body)
+            min_temp = data['min']['temp']
+            max_temp = data['max']['temp']
+
+            min_stamp = time.strftime('%H:%M', time.localtime(data['min']['timestamp']))
+            max_stamp = time.strftime('%H:%M', time.localtime(data['max']['timestamp']))
+
+            logging.warning('Got a forecast, Max = %s @ %s, Min = %s @ %s', max_temp, max_stamp, min_temp, min_stamp)
+            self._divoom.set_forecast(data)
+
+        except Exception as e:      # pylint: disable=broad-except
+            logging.error(str(e))
+            self.clear()
+            self.set_status(405)
+            self.write(json.dumps({
+                "message": str(e)
+            }))
+
+
+class HexHandler(tornado.web.RequestHandler):
+    def initialize(self, divoom):  # pylint: disable=arguments-differ
+        self._divoom = divoom
+
+    def data_received(self, chunk):
+        pass
+
+    def get(self, *args, **kwargs):
+        self.clear()
+        self.set_status(200)
 
 
 class SunHandler(tornado.web.RequestHandler):
@@ -470,4 +517,4 @@ if __name__ == '__main__':
     main()
 
 
-#cat ha.json | jq -r '[.[]|select(.entity_id=="sensor.yr_symbol"),select(.entity_id=="sensor.yr_temperature")| .state]'
+# cat ha.json | jq -r '[.[]|select(.entity_id=="sensor.yr_symbol"),select(.entity_id=="sensor.yr_temperature")| .state]'

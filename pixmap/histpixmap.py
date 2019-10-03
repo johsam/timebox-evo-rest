@@ -21,6 +21,8 @@ class ModeType(Enum):
     image = 4
     sunrise = 5
     sunset = 6
+    forecastmax = 7
+    forecastmin = 8
 
     def __int__(self):
         return self.value
@@ -53,6 +55,8 @@ class HistPixmap(RawPixmap):
         self._sunrise_epoch = 0
         self._sunset_epoch = 0
 
+        self._forecast = {}  # type: dict
+
         self._width = width
         self._height = height
 
@@ -76,6 +80,10 @@ class HistPixmap(RawPixmap):
 
     def set_sunset(self, epoch: int):
         self._sunset_epoch = epoch
+        self.draw_mode(self._mode)
+
+    def set_forecast(self, forecast: dict):
+        self._forecast = forecast
         self.draw_mode(self._mode)
 
     def set_mode(self, mode: Union[int, str]):
@@ -134,6 +142,23 @@ class HistPixmap(RawPixmap):
 
             self.set_rgb_pixels(pixels)
             self.draw_clock(self._sunset_epoch)
+
+        if mode == ModeType.forecastmax:
+            if 'max' not in self._forecast:
+                return
+            self.draw_forecast_symbol('max')
+            self._divoom.send()
+            time.sleep(1)
+            self.draw_forecast('max')
+
+        if mode == ModeType.forecastmin:
+            if 'min' not in self._forecast:
+                return
+
+            self.draw_forecast_symbol('min')
+            self._divoom.send()
+            time.sleep(1)
+            self.draw_forecast('min')
 
         self._divoom.send()
 
@@ -248,8 +273,42 @@ class HistPixmap(RawPixmap):
             self.smallCharAt(HistPixmap._toChar(decimal), 12, 3, color)
 
         else:
-            tens = abs(val) / 10
-            ones = abs(val) % 10
+            tens = int(abs(val) / 10)
+            ones = int(abs(val) % 10)
 
             self.charAt(HistPixmap._toChar(tens), 4, 1, color)
             self.charAt(HistPixmap._toChar(ones), 10, 1, color)
+
+    def draw_forecast_symbol(self, min_or_max: str):
+        img = super(HistPixmap, self).load_image('backgrounds/yr/{}.png'.format(self._forecast[min_or_max]['symbol']))
+        pixels = super(HistPixmap, self).decode_image(img, False)
+        self.set_rgb_pixels(pixels)
+
+    def draw_forecast(self, min_or_max: str):
+        img = super(HistPixmap, self).load_image('backgrounds/yr/{}.png'.format(self._forecast[min_or_max]['symbol']))
+        pixels = super(HistPixmap, self).decode_image(img, True)
+        self.set_rgb_pixels(pixels)
+        self.draw_clock(self._forecast[min_or_max]['timestamp'])
+        self.draw_forecast_temp(self._forecast[min_or_max]['temp'])
+        self._divoom.send()
+
+    def draw_forecast_temp(self, val: float):
+
+        # Pick color
+        color = self.temp_color(val)
+
+        tens = int(abs(val) / 10)
+        ones = int(abs(val) % 10)
+        signpos = 4
+
+        if tens == 0:
+            signpos = 8
+        else:
+            self.smallCharAt(HistPixmap._toChar(tens), 8, 1, color)
+
+        self.smallCharAt(HistPixmap._toChar(ones), 12, 1, color)
+
+        if val >= 0.0:
+            self.smallCharAt('+', signpos, 1, color)
+        else:
+            self.smallCharAt('-', signpos, 1, color)

@@ -1,7 +1,7 @@
 import logging
 from typing import Tuple, List
 
-from PIL import Image  # , ImageEnhance
+from PIL import Image, ImageEnhance
 from pixmap.fonts import smallFont, bigFont
 
 RGBColor = Tuple[int, int, int]
@@ -110,7 +110,7 @@ class RawPixmap():
     def blend_rgba(cls, under, over):
         return tuple([cls.blend_value(under[i], over[i], over[3]) for i in (0, 1, 2)] + [255])
 
-    def decode_image(self, image: Image) -> List[RGBColor]:
+    def decode_image(self, image: Image, dim:bool = False) -> List[RGBColor]:
 
         w = self._width
         h = self._height
@@ -119,8 +119,9 @@ class RawPixmap():
         target = Image.new('RGBA', (w, h), color='black')
 
         source = image.convert('RGBA')
-        # enhancer = ImageEnhance.Brightness(source)
-        # source = enhancer.enhance(1.5)
+        if dim:
+            enhancer = ImageEnhance.Brightness(source)
+            source = enhancer.enhance(0.5)
 
         if source.size[0] != w or source.size[1] != h:
             source.thumbnail((w, h), Image.BICUBIC)

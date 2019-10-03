@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import time
-
 import requests
 from dateutil import parser as date_parser
 from yr.libyr import Yr
@@ -26,7 +25,7 @@ def update_forecast(location):
 
         #print(timestamp, from_time, symbol, temp)
 
-        if temp < evo_forecast['min']['temp']:
+        if temp <= evo_forecast['min']['temp']:
             evo_forecast['min']['temp'] = temp
             evo_forecast['min']['timestamp'] = timestamp
             evo_forecast['min']['symbol'] = symbol
@@ -36,9 +35,9 @@ def update_forecast(location):
             evo_forecast['max']['timestamp'] = timestamp
             evo_forecast['max']['symbol'] = symbol
 
-    requests.post('http://localhost:3333/evo/forecast', data=evo_forecast)
+    requests.post('http://localhost:3333/evo/forecast', json=evo_forecast)
 
-    #print(evo_forecast)
+    # print(evo_forecast)
 
 
 def main():
