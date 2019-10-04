@@ -56,7 +56,7 @@ class HistPixmap(RawPixmap):
         self._sunset_epoch = 0
 
         self._forecast = {}  # type: dict
-
+        #self._forecast = {"min": {"symbol": "03d", "temp": 2, "timestamp": 1570168800}, "max": {"symbol": "03d", "temp": 6, "timestamp": 1570183200}}
         self._width = width
         self._height = height
 
@@ -249,6 +249,7 @@ class HistPixmap(RawPixmap):
         return color
 
     def draw_temp(self, val: float, alt: bool = False):
+
         # Pick color
         color = self.temp_color(val)
 
@@ -285,9 +286,14 @@ class HistPixmap(RawPixmap):
         self.set_rgb_pixels(pixels)
 
     def draw_forecast(self, min_or_max: str):
-        img = super(HistPixmap, self).load_image('backgrounds/yr/{}.png'.format(self._forecast[min_or_max]['symbol']))
-        pixels = super(HistPixmap, self).decode_image(img, True)
-        self.set_rgb_pixels(pixels)
+
+        brightness = 0.5
+
+        for y in range(self._height):
+            for x in range(self._width):
+                (r, g, b) = self.getPixel(x, y)
+                self.setPixel(x, y, (int(r * brightness), int(g * brightness), int(b * brightness)))
+
         self.draw_clock(self._forecast[min_or_max]['timestamp'])
         self.draw_forecast_temp(self._forecast[min_or_max]['temp'])
         self._divoom.send()
@@ -299,16 +305,19 @@ class HistPixmap(RawPixmap):
 
         tens = int(abs(val) / 10)
         ones = int(abs(val) % 10)
-        signpos = 4
+        signpos = 0
 
         if tens == 0:
-            signpos = 8
-        else:
-            self.smallCharAt(HistPixmap._toChar(tens), 8, 1, color)
+            signpos = 6
+        elif tens == 1:
+            signpos = 2
 
-        self.smallCharAt(HistPixmap._toChar(ones), 12, 1, color)
+        if tens > 0:
+            self.charAt(HistPixmap._toChar(tens), 4, 1, color)
+
+        self.charAt(HistPixmap._toChar(ones), 10, 1, color)
 
         if val >= 0.0:
-            self.smallCharAt('+', signpos, 1, color)
+            self.smallCharAt('+', signpos, 2, color)
         else:
-            self.smallCharAt('-', signpos, 1, color)
+            self.smallCharAt('-', signpos, 2, color)

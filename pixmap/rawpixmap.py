@@ -110,7 +110,7 @@ class RawPixmap():
     def blend_rgba(cls, under, over):
         return tuple([cls.blend_value(under[i], over[i], over[3]) for i in (0, 1, 2)] + [255])
 
-    def decode_image(self, image: Image, dim:bool = False) -> List[RGBColor]:
+    def decode_image(self, image: Image, dim: bool = False) -> List[RGBColor]:
 
         w = self._width
         h = self._height
