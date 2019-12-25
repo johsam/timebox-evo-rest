@@ -479,7 +479,7 @@ def main():
     # Create an instance of tornado formatter, just overriding the 'fmt' 'datefmt' args
 
     if options.no_ts:
-        my_log_format = '%(color)s%(levelname)-8s [%(module)s:%(lineno)d]%(end_color)s %(message)s'
+        my_log_format = '%(color)s%(levelname)1.1s [%(module)s:%(lineno)d]%(end_color)s %(message)s'
     else:
         my_log_format = '%(color)s%(asctime)s %(levelname)1.1s [%(module)s:%(lineno)d]%(end_color)s %(message)s'
 
@@ -508,6 +508,8 @@ def main():
     atexit.register(lambda: shutdownHandler(application, scheduler))
 
     # Fire up our server
+
+    logging.info('Server started on %s:%d', options.listen, options.port)
 
     ioloop.start()
 

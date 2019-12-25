@@ -287,16 +287,26 @@ class HistPixmap(RawPixmap):
 
     def draw_forecast(self, min_or_max: str):
 
-        brightness = 0.5
+        brightness = 1.0
+        source = self.get_rgb_pixels().copy()
 
-        for y in range(self._height):
-            for x in range(self._width):
-                (r, g, b) = self.getPixel(x, y)
-                self.setPixel(x, y, (int(r * brightness), int(g * brightness), int(b * brightness)))
+        for _ in range(11):
+            brightness -= 0.05
+            for y in range(self._height):
+                for x in range(self._width):
+                    #(r, g, b) = self.getPixel(x, y)
+                    (r, g, b) = source[(x % self._width) + (y % self._height) * self._width]
+                    self.setPixel(x, y, (int(r * brightness), int(g * brightness), int(b * brightness)))
+            
+            self.draw_forecast_temp(self._forecast[min_or_max]['temp'])
+            self.draw_clock(self._forecast[min_or_max]['timestamp'])
 
-        self.draw_clock(self._forecast[min_or_max]['timestamp'])
-        self.draw_forecast_temp(self._forecast[min_or_max]['temp'])
-        self._divoom.send()
+            self._divoom.send()
+            time.sleep(0.05)
+
+        #self.draw_clock(self._forecast[min_or_max]['timestamp'])
+        #self.draw_forecast_temp(self._forecast[min_or_max]['temp'])
+        #self._divoom.send()
 
     def draw_forecast_temp(self, val: float):
 
